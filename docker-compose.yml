@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  ganache:
+    image: trufflesuite/ganache:v7.9.1
+    command: >
+      --wallet.mnemonic "myth like bonus scare over problem client lizard pioneer submit female collect"
+      --wallet.totalAccounts 10
+      --wallet.defaultBalance 1000
+      --miner.blockGasLimit 10000000
+      --miner.coinbase 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1
+      --chain.networkId 5777
+      --server.host 0.0.0.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(8545, 'localhost').on('connect', ()=>process.exit(0)).on('error', ()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - propchain-network
+
+  mongodb:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - propchain-network
+
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/src/contracts:/app/backend_contracts
+      - ./frontend/src/contracts:/app/frontend_contracts
+    depends_on:
+      ganache:
+        condition: service_healthy
+    networks:
+      - propchain-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/propchain?authSource=admin
+      - BLOCKCHAIN_URL=http://ganache:8545
+      - JWT_SECRET=your-secret-key-change-in-production
+      - ADMIN_PRIVATE_KEY=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d
+    depends_on:
+      mongodb:
+        condition: service_started
+      blockchain:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - propchain-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3010:3000"
+    environment:
+      - REACT_APP_API_URL=/api
+      - REACT_APP_BLOCKCHAIN_URL=/ganache
+      - WDS_SOCKET_PORT=3010
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - propchain-network
+
+networks:
+  propchain-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
