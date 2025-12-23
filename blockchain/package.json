@@ -1,0 +1,19 @@
+{
+  "name": "propchain-blockchain",
+  "version": "1.0.0",
+  "description": "Smart contracts for PropChain",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3",
+    "@truffle/hdwallet-provider": "^2.1.13",
+    "truffle": "^5.11.1"
+  },
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "test": "truffle test"
+  }
+}
